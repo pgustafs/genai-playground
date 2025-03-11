@@ -1,0 +1,29 @@
+# Use RHEL 9 UBI as base image
+FROM registry.access.redhat.com/ubi9/ubi-minimal:latest
+
+# Install Nginx
+RUN microdnf -y install nginx && \
+    microdnf clean all
+
+# Create directory for SSL certificates
+RUN mkdir -p /etc/nginx/ssl
+
+# Create self-signed certificate for testing (replace with your actual certs in production)
+RUN openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+    -keyout /etc/nginx/ssl/nginx.key \
+    -out /etc/nginx/ssl/nginx.crt \
+    -subj "/C=US/ST=State/L=City/O=Organization/CN=localhost" \
+    -addext "subjectAltName=DNS:localhost,IP:127.0.0.1"
+
+# Copy Nginx configuration template
+COPY nginx.conf.template /etc/nginx/nginx.conf.template
+
+# Copy entrypoint script
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+# Forward ports
+EXPOSE 80 443
+
+# Set the entrypoint script
+ENTRYPOINT ["/entrypoint.sh"]
