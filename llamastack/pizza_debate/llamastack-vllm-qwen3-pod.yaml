@@ -1,0 +1,67 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: llamastack-vllm-qwen3
+  labels:
+    app: llamastack-vllm-qwen3
+spec:
+  containers:
+    - name: vllm
+      # image: registry.redhat.io/rhaiis/vllm-cuda-rhel9:3.0.0
+      #command: ["python", "-m", "vllm.entrypoints.openai.api_server"]
+      image: vllm/vllm-openai:latest
+      command: ["python3", "-m", "vllm.entrypoints.openai.api_server"]
+      args:
+        - --port=8080
+        - --model=/mnt/models
+        - --served-model-name=qwen3-8b
+        - --reasoning-parser=qwen3
+        - --enable-auto-tool-choice
+        - --tool-call-parser=hermes
+        - --max_model_len=32768
+      resources:
+        limits:
+          nvidia.com/gpu=all: 1
+      ports:
+        - containerPort: 8080
+          hostPort: 8080
+      securityContext:
+        runAsNonRoot: true
+      volumeMounts:
+        - name: modelcar-model
+          mountPath: /mnt/models
+
+    - name: modelcar
+      image: localhost/modelcar-qwen3-8b-fp8-dynamic
+      command: ["sh", "-c", "sleep infinity"]
+      volumeMounts:
+        - name: modelcar-model
+          mountPath: /models
+   
+    - name: llamastack
+      image: llamastack/distribution-remote-vllm
+      ports:
+        - containerPort: 5000
+          hostPort: 5000
+      securityContext:
+        runAsNonRoot: true
+      env:
+      - name: INFERENCE_MODEL
+        value: "qwen3-8b"
+      - name: VLLM_URL
+        value: "http://localhost:8080/v1"
+      - name: VLLM_MAX_TOKENS
+        value: "8192"
+      - name: VLLM_API_TOKEN
+        value: "fake"
+      - name: LLAMA_STACK_PORT
+        value: "5000"
+      volumeMounts:
+        - name: llamastack
+          mountPath: /root/.llama
+
+  volumes:
+    - name: modelcar-model
+      emptyDir: {}
+    - name: llamastack
+      emptyDir: {}

@@ -169,3 +169,8 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+TEMPORARY_WORKING/
+chaos_kitchen/
+basic/
+.DS_Store
